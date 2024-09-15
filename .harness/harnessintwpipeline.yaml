@@ -1,0 +1,52 @@
+pipeline:
+  name: harness-intw-pipeline
+  identifier: harnessintwpipeline
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.harnessgitconnector
+        build: <+input>
+  stages:
+    - stage:
+        name: Build Javer Server
+        identifier: Build_Javer_Server
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.harnessk8sconnector
+              namespace: java-apps-ns
+              automountServiceAccountToken: true
+              nodeSelector: {}
+              os: Linux
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: build
+                  identifier: build
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: maven:3.8-jdk-11
+                    shell: Sh
+                    command: mvn clean package dependency:copy-dependencies
+              - step:
+                  type: Run
+                  name: check_dependecies
+                  identifier: check_dependecies
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: maven:3.8-jdk-11
+                    shell: Sh
+                    command: mvn dependency-check:check -U -DskipTests
+                    reports:
+                      type: JUnit
+                      spec:
+                        paths:
+                          - /harness/target/*.xml
